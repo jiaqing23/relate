@@ -5,7 +5,8 @@
 
 table.past-flow-session-table th {
   margin-right:1em;
-  border-bottom: 1px solid black;
+  @extend .border-bottom;
+  @extend .border-secondary-subtle;
 }
 
 table.past-flow-session-table td {
@@ -110,6 +111,11 @@ table.past-flow-session-table {
   background-color: #ddd;
   font-weight: bold;
   border-radius: 4px;
+}
+
+/* remove extra spacing from ChoiceQuestion options */
+label div.relate-markup p:only-child {
+  margin-bottom: 0;
 }
 
 /* }}} */

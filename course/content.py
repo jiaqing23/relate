@@ -29,6 +29,7 @@ import os
 import re
 import sys
 from typing import cast
+from xml.etree.ElementTree import Element, tostring
 
 import dulwich.objects
 import dulwich.repo
@@ -46,12 +47,12 @@ from course.validation import Blob_ish, Tree_ish
 from relate.utils import Struct, SubdirRepoWrapper, dict_to_struct
 
 
-CACHE_KEY_ROOT = "py3"
+CACHE_KEY_ROOT = "py4"
 
 
 # {{{ mypy
 
-from collections.abc import Callable, Collection
+from collections.abc import Callable, Collection, Mapping
 from typing import (
     TYPE_CHECKING,
     Any,
@@ -874,10 +875,10 @@ JINJA_YAML_RE = re.compile(
     re.MULTILINE | re.DOTALL)
 YAML_BLOCK_START_SCALAR_RE = re.compile(
     r"(:\s*[|>])"
-    "(J?)"
-    "((?:[0-9][-+]?|[-+][0-9]?)?)"
+    r"(J?)"
+    r"((?:[0-9][-+]?|[-+][0-9]?)?)"
     r"(?:\s*\#.*)?"
-    "$")
+    r"$")
 
 IN_BLOCK_END_RAW_RE = re.compile(r"(.*)({%-?\s*endraw\s*-?%})(.*)")
 GROUP_COMMENT_START = re.compile(r"^\s*#\s*\{\{\{")
@@ -1006,7 +1007,8 @@ def expand_yaml_macros(repo: Repo_ish, commit_sha: bytes, yaml_str: str) -> str:
     from minijinja import Environment
     jinja_env = Environment(
             loader=YamlBlockEscapingGitTemplateLoader(repo, commit_sha),
-            undefined_behavior="strict")
+            undefined_behavior="strict",
+            auto_escape_callback=lambda fn: False)
 
     # {{{ process explicit [JINJA] tags (deprecated)
 
@@ -1112,8 +1114,7 @@ def get_yaml_from_repo(
         raise ValueError("File uses tabs in indentation. "
                 "This is not allowed.")
 
-    expanded = expand_yaml_macros(
-            repo, commit_sha, yaml_bytestream)
+    expanded = expand_yaml_macros(repo, commit_sha, yaml_bytestream)
 
     yaml_data = load_yaml(expanded)  # type:ignore
     result = dict_to_struct(yaml_data)
@@ -1139,7 +1140,11 @@ def _attr_to_string(key, val):
 
 
 class TagProcessingHTMLParser(html_parser.HTMLParser):
-    def __init__(self, out_file, process_tag_func):
+    def __init__(
+                self,
+                out_file,
+                process_tag_func: Callable[[str, Mapping[str, str]], Mapping[str, str]]
+            ) -> None:
         html_parser.HTMLParser.__init__(self)
 
         self.out_file = out_file
@@ -1186,7 +1191,7 @@ class TagProcessingHTMLParser(html_parser.HTMLParser):
 
 
 class PreserveFragment:
-    def __init__(self, s):
+    def __init__(self, s: str) -> None:
         self.s = s
 
 
@@ -1198,7 +1203,7 @@ class LinkFixerTreeprocessor(Treeprocessor):
         self.commit_sha = commit_sha
         self.reverse_func = reverse_func
 
-    def reverse(self, viewname, args):
+    def reverse(self, viewname: str, args: tuple[Any, ...]) -> str:
         frag = None
 
         new_args = []
@@ -1221,13 +1226,13 @@ class LinkFixerTreeprocessor(Treeprocessor):
 
         return result
 
-    def get_course_identifier(self):
+    def get_course_identifier(self) -> str:
         if self.course is None:
             return "bogus-course-identifier"
         else:
             return self.course.identifier
 
-    def process_url(self, url):
+    def process_url(self, url: str) -> str | None:
         try:
             if url.startswith("course:"):
                 course_id = url[7:]
@@ -1285,7 +1290,7 @@ class LinkFixerTreeprocessor(Treeprocessor):
             message = ("Invalid character in RELATE URL: " + url).encode("utf-8")
             return "data:text/plain;base64,"+b64encode(message).decode()
 
-    def process_tag(self, tag_name, attrs):
+    def process_tag(self, tag_name: str, attrs: Mapping[str, str]) -> Mapping[str, str]:
         changed_attrs = {}
 
         if tag_name == "table" and attrs.get("bootstrap") != "no":
@@ -1311,30 +1316,36 @@ class LinkFixerTreeprocessor(Treeprocessor):
 
         return changed_attrs
 
-    def process_etree_element(self, element):
+    def process_etree_element(self, element: Element) -> None:
         changed_attrs = self.process_tag(element.tag, element.attrib)
 
         for key, val in changed_attrs.items():
             element.set(key, val)
 
-    def walk_and_process_tree(self, root):
+    def walk_and_process_tree(self, root: Element) -> None:
         self.process_etree_element(root)
 
         for child in root:
             self.walk_and_process_tree(child)
 
-    def run(self, root):
+    def run(self, root: Element) -> None:
         self.walk_and_process_tree(root)
 
         # root through and process Markdown's HTML stash (gross!)
         from io import StringIO
 
-        for i, (html, safe) in enumerate(self.md.htmlStash.rawHtmlBlocks):
+        for i, html in enumerate(self.md.htmlStash.rawHtmlBlocks):
             outf = StringIO()
             parser = TagProcessingHTMLParser(outf, self.process_tag)
+
+            # According to
+            # https://github.com/python/typeshed/blob/61ba4de28f1469d6a642c983d5a7674479c12444/stubs/Markdown/markdown/util.pyi#L44
+            # this should not happen, but... *shrug*
+            if isinstance(html, Element):
+                html = tostring(html).decode("utf-8")
             parser.feed(html)
 
-            self.md.htmlStash.rawHtmlBlocks[i] = (outf.getvalue(), safe)
+            self.md.htmlStash.rawHtmlBlocks[i] = outf.getvalue()
 
 
 class LinkFixerExtension(Extension):
@@ -1346,10 +1357,11 @@ class LinkFixerExtension(Extension):
         self.commit_sha = commit_sha
         self.reverse_func = reverse_func
 
-    def extendMarkdown(self, md, md_globals):  # noqa
-        md.treeprocessors["relate_link_fixer"] = \
-                LinkFixerTreeprocessor(md, self.course, self.commit_sha,
-                        reverse_func=self.reverse_func)
+    def extendMarkdown(self, md):  # noqa
+        md.treeprocessors.register(
+            LinkFixerTreeprocessor(md, self.course, self.commit_sha,
+                                    reverse_func=self.reverse_func),
+            "relate_link_fixer", 0)
 
 
 def remove_prefix(prefix: str, s: str) -> str:
@@ -1444,7 +1456,7 @@ def markup_to_html(
             cache_key = None
         else:
             import hashlib
-            cache_key = ("markup:v8:%s:%d:%s:%s:%s%s"
+            cache_key = ("markup:v9:%s:%d:%s:%s:%s%s"
                     % (CACHE_KEY_ROOT,
                        course.id, course.trusted_for_markup, str(commit_sha),
                        hashlib.md5(text.encode("utf-8")).hexdigest(),
@@ -1492,8 +1504,10 @@ def markup_to_html(
                 tags=[*bleach.ALLOWED_TAGS, "div", "span", "p", "img",
                     "h1", "h2", "h3", "h4", "h5", "h6",
                     "table", "td", "tr", "th",
-                    "pre"],
+                    "pre", "details", "summary", "thead", "tbody"],
                 attributes=filter_html_attributes)
+
+    result = f"<div class='relate-markup'>{result}</div>"
 
     assert isinstance(result, str)
     if cache_key is not None:
@@ -1578,7 +1592,7 @@ class AtTimePostprocessor(DatespecPostprocessor):
 
 
 PLUS_DELTA_RE = re.compile(r"^(.*)\s*([+-])\s*([0-9]+)\s+"
-    "(weeks?|days?|hours?|minutes?)$")
+    r"(weeks?|days?|hours?|minutes?)$")
 
 
 class PlusDeltaPostprocessor(DatespecPostprocessor):

@@ -81,7 +81,7 @@ if TYPE_CHECKING:
 import re
 
 
-CODE_CELL_DIV_ATTRS_RE = re.compile('(<div class="[^>]*code_cell[^>"]*")(>)')
+CODE_CELL_DIV_ATTRS_RE = re.compile(r'(<div class="[^>]*code_cell[^>"]*")(>)')
 
 
 def getattr_with_fallback(
@@ -1069,6 +1069,13 @@ class ProseMirrorTextarea(forms.Textarea):
     More tips for using this editor to type math:
     <ul>
         <li>
+        You may paste in Markdown-with-math (as accepted by
+        <a
+        href="https://docs.github.com/en/get-started/writing-on-github/working-with-advanced-formatting/writing-mathematical-expressions"
+        >Github</a>,
+        <a href="https://pandoc.org/MANUAL.html#math">Pandoc</a>, or
+        <a href="https://meta.discourse.org/t/discourse-math/65770">Discourse</a>).
+        <li>
         Inline math nodes are delimited with <code>$</code>.
         After typing the closing dollar sign in
         an expression like <code>$\int_a^b f(x) dx$</code>, a math node will appear.
@@ -1217,8 +1224,7 @@ def csv_data_importable(file_contents, column_idx_list, header_count):
     return True, ""
 
 
-def will_use_masked_profile_for_email(
-        recipient_email: None | str | list[str]) -> bool:
+def will_use_masked_profile_for_email(recipient_email: str | list[str] | None) -> bool:
     if not recipient_email:
         return False
     if not isinstance(recipient_email, list):

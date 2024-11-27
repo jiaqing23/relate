@@ -531,7 +531,7 @@ ALLOWED_EMBEDDED_QUESTION_CLASSES = [
 
 WRAPPED_NAME_RE = re.compile(r"[^{](?=(\[\[[^\[\]]*\]\]))[^}]")
 NAME_RE = re.compile(r"[^{](?=\[\[([^\[\]]*)\]\])[^}]")
-NAME_VALIDATE_RE = re.compile("^[a-zA-Z]+[a-zA-Z0-9_]{0,}$")
+NAME_VALIDATE_RE = re.compile(r"^[a-zA-Z]+[a-zA-Z0-9_]{0,}$")
 
 
 class InlineMultiQuestion(
@@ -890,7 +890,7 @@ class InlineMultiQuestion(
                 wrapped,
                 "<strong>" + correct_answer_i + "</strong>")
 
-        CA_PATTERN = string_concat(_("A correct answer is"), ": <br/> %s")  # noqa
+        CA_PATTERN = string_concat(_("A correct answer is"), ": %s")  # noqa
 
         result = CA_PATTERN % cor_answer_output
 

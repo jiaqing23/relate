@@ -38,6 +38,7 @@ from django.utils.timezone import now, timedelta
 
 from course import constants, flow, models
 from course.constants import (
+    SESSION_LOCKED_TO_FLOW_PK,
     flow_permission as fperm,
     grade_aggregation_strategy as g_strategy,
 )
@@ -1714,7 +1715,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         self.mock_get_session_start_rule = fake_get_session_start_rule.start()
         self.addCleanup(fake_get_session_start_rule.stop)
 
-        self.now_datatime = now()
+        self.now_datetime = now()
 
     def test_expire_non_in_progress_session(self):
         flow_session = factories.FlowSessionFactory(
@@ -1724,7 +1725,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         expected_error_msg = "Can't expire a session that's not in progress"
         with self.assertRaises(RuntimeError) as cm:
             flow.expire_flow_session(
-                self.fctx, flow_session, grading_rule, self.now_datatime)
+                self.fctx, flow_session, grading_rule, self.now_datetime)
 
         self.assertIn(expected_error_msg, str(cm.exception))
 
@@ -1740,7 +1741,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         expected_error_msg = "Can't expire an anonymous flow session"
         with self.assertRaises(RuntimeError) as cm:
             flow.expire_flow_session(
-                self.fctx, flow_session, grading_rule, self.now_datatime)
+                self.fctx, flow_session, grading_rule, self.now_datetime)
 
         self.assertIn(expected_error_msg, str(cm.exception))
 
@@ -1760,7 +1761,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         )
 
         self.assertFalse(flow.expire_flow_session(
-            self.fctx, flow_session, grading_rule, self.now_datatime,
+            self.fctx, flow_session, grading_rule, self.now_datetime,
             past_due_only=True))
 
         self.assertEqual(self.mock_adjust_flow_session_page_data.call_count, 0)
@@ -1771,7 +1772,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         flow_session = factories.FlowSessionFactory(
             participation=self.student_participation, in_progress=True)
 
-        due = self.now_datatime + timedelta(hours=1)
+        due = self.now_datetime + timedelta(hours=1)
 
         grading_rule = FlowSessionGradingRule(
             grade_identifier="la_quiz",
@@ -1782,7 +1783,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         )
 
         self.assertFalse(flow.expire_flow_session(
-            self.fctx, flow_session, grading_rule, self.now_datatime,
+            self.fctx, flow_session, grading_rule, self.now_datetime,
             past_due_only=True))
 
         self.assertEqual(self.mock_adjust_flow_session_page_data.call_count, 0)
@@ -1793,7 +1794,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         flow_session = factories.FlowSessionFactory(
             participation=self.student_participation, in_progress=True)
 
-        due = self.now_datatime - timedelta(hours=1)
+        due = self.now_datetime - timedelta(hours=1)
 
         grading_rule = FlowSessionGradingRule(
             grade_identifier="la_quiz",
@@ -1804,7 +1805,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         )
 
         flow.expire_flow_session(
-            self.fctx, flow_session, grading_rule, self.now_datatime,
+            self.fctx, flow_session, grading_rule, self.now_datetime,
             past_due_only=True)
 
         self.assertEqual(self.mock_adjust_flow_session_page_data.call_count, 1)
@@ -1832,7 +1833,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         )
 
         self.assertTrue(flow.expire_flow_session(
-            self.fctx, flow_session, grading_rule, self.now_datatime))
+            self.fctx, flow_session, grading_rule, self.now_datetime))
 
         self.assertEqual(self.mock_adjust_flow_session_page_data.call_count, 1)
         self.assertEqual(self.mock_finish_flow_session.call_count, 1)
@@ -1855,7 +1856,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
         )
 
         self.assertTrue(flow.expire_flow_session(
-            self.fctx, flow_session, grading_rule, self.now_datatime))
+            self.fctx, flow_session, grading_rule, self.now_datetime))
 
         self.assertEqual(self.mock_adjust_flow_session_page_data.call_count, 1)
         self.assertEqual(self.mock_finish_flow_session.call_count, 1)
@@ -1867,7 +1868,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
             expiration_mode="unknown"
         )
 
-        due = self.now_datatime - timedelta(hours=1)
+        due = self.now_datetime - timedelta(hours=1)
 
         grading_rule = FlowSessionGradingRule(
             grade_identifier="la_quiz",
@@ -1881,7 +1882,7 @@ class ExpireFlowSessionTest(SingleCourseTestMixin, TestCase):
                               "on flow session ID %i" % flow_session.pk)
         with self.assertRaises(ValueError) as cm:
             flow.expire_flow_session(
-                self.fctx, flow_session, grading_rule, self.now_datatime)
+                self.fctx, flow_session, grading_rule, self.now_datetime)
 
         self.assertIn(expected_error_msg, str(cm.exception))
 
@@ -2959,9 +2960,7 @@ class LockDownIfNeededTest(unittest.TestCase):
         flow_permissions = ["other_flow_permission"]
         flow.lock_down_if_needed(self.request, flow_permissions, self.flow_session)
 
-        self.assertIsNone(
-            self.request.session.get(
-                "relate_session_locked_to_exam_flow_session_pk"))
+        self.assertIsNone(self.request.session.get(SESSION_LOCKED_TO_FLOW_PK))
 
     def test_has_lock_down_as_exam_session_flow_permission(self):
         flow_permissions = [fperm.lock_down_as_exam_session,
@@ -2969,8 +2968,7 @@ class LockDownIfNeededTest(unittest.TestCase):
         flow.lock_down_if_needed(self.request, flow_permissions, self.flow_session)
 
         self.assertEqual(
-            self.request.session.get(
-                "relate_session_locked_to_exam_flow_session_pk"),
+            self.request.session.get(SESSION_LOCKED_TO_FLOW_PK),
             self.flow_session.pk
         )
 
