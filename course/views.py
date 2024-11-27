@@ -60,7 +60,7 @@ from course.constants import (
     participation_permission as pperm,
     participation_status,
 )
-from course.content import get_course_repo
+from course.content import (get_course_repo, TabDesc)
 from course.enrollment import (
     get_participation_for_request,
     get_participation_permissions,
@@ -234,6 +234,20 @@ def static_page(pctx: CoursePageContext, page_path: str) -> http.HttpResponse:
         "chunks": chunks,
         "show_enroll_button": False,
         })
+
+
+def tabbed_page(request: http.HttpRequest) -> http.HttpResponse:
+    return render(
+        request,
+        "course/tabbed-page.html",
+        {
+            "tabs": [
+                TabDesc("Relate", "/"),
+                TabDesc("Numpy", "https://numpy.org/doc/"),
+                TabDesc("Jupyter", "https://scicomp-jupyterlab.cs.illinois.edu/lab/"),
+            ]
+        },
+    )
 
 # }}}
 

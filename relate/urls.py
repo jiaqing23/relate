@@ -120,6 +120,8 @@ urlpatterns = [
     # {{{ course
 
     path("", course.views.home, name="relate-home"),
+    
+    path("tabbed", course.views.tabbed_page, name="relate-tabbed"),
 
     re_path(r"^course"
         "/" + COURSE_ID_REGEX

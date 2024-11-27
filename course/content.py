@@ -527,6 +527,14 @@ class FlowRulesDesc(Struct):
 
 # {{{ mypy: flow
 
+class TabDesc(Struct):
+    def __init__(self, title: str, url: str) -> None:
+        self.title = title
+        self.url = url
+
+    title: str
+    url: str
+
 class FlowPageDesc(Struct):
     id: str
     type: str
