@@ -56,7 +56,10 @@ from course.constants import (
     is_expiration_mode_allowed,
     participation_permission as pperm,
 )
-from course.content import FlowPageDesc
+from course.content import (
+    FlowPageDesc,
+    TabDesc
+)
 from course.exam import get_login_exam_ticket
 from course.models import (
     Course,
@@ -1386,7 +1389,9 @@ def view_start_flow(pctx: CoursePageContext, flow_id: str) -> http.HttpResponse:
             participation=pctx.participation)
 
     if request.method == "POST":
-        return post_start_flow(pctx, fctx, flow_id)
+        print(request.POST)
+        tab_view = "start-tab-view" in request.POST
+        return post_start_flow(pctx, fctx, flow_id, tab_view)
 
     login_exam_ticket = get_login_exam_ticket(pctx.request)
     now_datetime = get_now_or_fake_time(request)
@@ -1488,10 +1493,11 @@ def view_start_flow(pctx: CoursePageContext, flow_id: str) -> http.HttpResponse:
 
 @retry_transaction_decorator(serializable=True)
 def post_start_flow(
-        pctx: CoursePageContext, fctx: FlowContext, flow_id: str
-        ) -> http.HttpResponse:
+    pctx: CoursePageContext, fctx: FlowContext, flow_id: str, tab_view: bool
+) -> http.HttpResponse:
     now_datetime = get_now_or_fake_time(pctx.request)
     login_exam_ticket = get_login_exam_ticket(pctx.request)
+    redirect_target = "relate-view_flow_tab_page" if tab_view else "relate-view_flow_page"
 
     past_sessions = (FlowSession.objects
             .filter(
@@ -1511,8 +1517,9 @@ def post_start_flow(
                 timedelta(seconds=0)
                 <= (now_datetime - latest_session.start_time)
                 < timedelta(seconds=cooldown_seconds)):
-            return redirect("relate-view_flow_page",
-                pctx.course.identifier, latest_session.id, 0)
+            return redirect(
+                redirect_target, pctx.course.identifier, latest_session.id, 0
+            )
 
     session_start_rule = get_session_start_rule(
             pctx.course, pctx.participation,
@@ -1543,9 +1550,9 @@ def post_start_flow(
             remote_ip_address=remote_address_from_request(pctx.request))
 
     lock_down_if_needed(pctx.request, access_rule.permissions, session)
-
-    return redirect("relate-view_flow_page",
-            pctx.course.identifier, session.id, 0)
+    print("DONEEE" + "-"*100 +"1" if  tab_view else "0" )
+    return redirect(redirect_target,
+                    pctx.course.identifier, session.id, 0)
 
 # }}}
 
@@ -2108,6 +2115,39 @@ def view_flow_page(
 
 
 @course_view
+def view_flow_tab_page(
+        pctx: CoursePageContext,
+        flow_session_id: int,
+        page_ordinal: int) -> http.HttpResponse:
+    request = pctx.request
+
+    flow_session_id = int(flow_session_id)
+    flow_session = get_and_check_flow_session(pctx, flow_session_id)
+
+    assert flow_session is not None
+
+    flow_id = flow_session.flow_id
+
+    adjust_flow_session_page_data(pctx.repo, flow_session, pctx.course.identifier,
+            respect_preview=True)
+
+    fctx = FlowContext(pctx.repo, pctx.course, flow_id,
+                            participation=pctx.participation)
+
+    assert fctx.flow_desc.external_resources is not None
+
+    target_url = reverse(
+        "relate-view_flow_page",
+        args=[pctx.course.identifier, flow_session_id, page_ordinal],
+    )
+
+    return render(
+        request,
+        "course/tabbed-page.html",
+        {"tabs": [TabDesc("Relate", target_url)] + fctx.flow_desc.external_resources},
+    )
+
+@course_view
 def get_prev_answer_visits_dropdown_content(
             pctx, flow_session_id, page_ordinal, prev_visit_id):
     """
@@ -2133,7 +2173,6 @@ def get_prev_answer_visits_dropdown_content(
             if prev_visit_id == "None" else
             int(prev_visit_id)),
     })
-
 
 def get_pressed_button(form: forms.Form) -> str:
     buttons = ["save", "save_and_next", "save_and_finish", "submit"]
