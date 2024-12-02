@@ -110,6 +110,12 @@ An Example
         - Green
         - ~CORRECT~ Yellow
 
+    external_resources:
+
+    -
+        title: Numpy
+        url: https://numpy.org/doc/
+
     completion_text: |
 
         # See you in class!
@@ -294,6 +300,15 @@ For example, to grant permission to revise an answer on a
         add_permissions:
             - change_answer
     value: 1
+
+
+.. _tabbed-page-view:
+
+Tabbed page view
+^^^^^^^^^^^^^^^^^^^^
+
+.. autoclass:: TabDesc
+
 
 .. _flow-life-cycle:
 

@@ -528,12 +528,23 @@ class FlowRulesDesc(Struct):
 # {{{ mypy: flow
 
 class TabDesc(Struct):
+    """
+    .. attribute:: title
+
+        (Required) Title to be displayed on the tab.
+
+    .. attribute:: url
+
+        (Required) The URL of the external web page.
+    """
+
     def __init__(self, title: str, url: str) -> None:
         self.title = title
         self.url = url
 
     title: str
     url: str
+
 
 class FlowPageDesc(Struct):
     id: str
