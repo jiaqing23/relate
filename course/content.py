@@ -615,6 +615,7 @@ class FlowDesc(Struct):
         :attr:`groups` or :class:`pages` must be given.
 
     .. attribute:: external_resources
+
         A list of :class:`TabDesc`. These are links to external
         resources that are displayed on the bottom of the flow page.
     """
