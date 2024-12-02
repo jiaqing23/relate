@@ -2138,7 +2138,7 @@ def view_flow_tabbed_page(
         request,
         "course/tabbed-page.html",
         {"tabs": [
-            TabDesc(_("Relate"), target_url),
+            TabDesc(str(_("Relate")), target_url),
             *fctx.flow_desc.external_resources
         ]},
     )
