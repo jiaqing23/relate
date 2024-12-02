@@ -401,8 +401,8 @@ urlpatterns = [
         "/(?P<flow_session_id>[0-9]+)"
         "/(?P<page_ordinal>[0-9]+)"
         "/$",
-        course.flow.view_flow_tab_page,
-        name="relate-view_flow_tab_page"),
+        course.flow.view_flow_tabbed_page,
+        name="relate-view_flow_tabbed_page"),
     re_path(r"^course"
         "/" + COURSE_ID_REGEX
         + "/prev_answers"

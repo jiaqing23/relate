@@ -837,7 +837,7 @@ class ExamLockdownMiddleware:
                 update_expiration_mode,
                 update_page_bookmark_state,
                 view_flow_page,
-                view_flow_tab_page,
+                view_flow_tabbed_page,
                 view_resume_flow,
                 view_start_flow,
             )
@@ -869,7 +869,7 @@ class ExamLockdownMiddleware:
                     resolver_match.func in [
                         view_resume_flow,
                         view_flow_page,
-                        view_flow_tab_page,
+                        view_flow_tabbed_page,
                         update_expiration_mode,
                         update_page_bookmark_state,
                         finish_flow_session_view]

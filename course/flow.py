@@ -2108,7 +2108,7 @@ def view_flow_page(
 
 
 @course_view
-def view_flow_tab_page(
+def view_flow_tabbed_page(
         pctx: CoursePageContext,
         flow_session_id: int,
         page_ordinal: int) -> http.HttpResponse:
