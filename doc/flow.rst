@@ -301,14 +301,17 @@ For example, to grant permission to revise an answer on a
             - change_answer
     value: 1
 
-
 .. _tabbed-page-view:
 
 Tabbed page view
 ^^^^^^^^^^^^^^^^^^^^
 
-.. autoclass:: TabDesc
+A flow page can be displayed in a tabbed view, where the first tab is the
+flow page itself, and the subsequent tabs are additional external websites. 
+This is useful when the browser only allows one tab to be open at a time, 
+for example, Guardian browser when taking an ProctorU exam.
 
+.. autoclass:: TabDesc
 
 .. _flow-life-cycle:
 

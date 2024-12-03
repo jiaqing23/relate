@@ -617,7 +617,7 @@ class FlowDesc(Struct):
     .. attribute:: external_resources
 
         A list of :class:`TabDesc`. These are links to external
-        resources that are displayed on the bottom of the flow page.
+        resources that are displayed as tabs on the flow tabbed page.
     """
 
     title: str
